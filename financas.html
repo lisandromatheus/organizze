@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Organiza.aí Ultimate</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 900: '#0f172a', 800: '#1e293b', 700: '#334155', 600: '#475569' },
+                        brand: { start: '#6366f1', end: '#8b5cf6' },
+                        income: '#10b981',
+                        expense: '#ef4444',
+                        warning: '#f59e0b',
+                        gold: '#fbbf24'
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: {
+                        'slide-up': 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'fade-in': 'fadeIn 0.2s ease-out',
+                        'bounce-subtle': 'bounceSubtle 1s infinite'
+                    },
+                    keyframes: {
+                        slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        bounceSubtle: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-3px)' } }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        
+        .btn-press:active { transform: scale(0.96); transition: transform 0.1s; }
+        
+        /* Dropdown Sugestões */
+        #suggestions-box {
+            position: absolute; bottom: 100%; left: 0; width: 100%;
+            background: #1e293b; border: 1px solid #334155; border-bottom: none;
+            border-radius: 12px 12px 0 0; max-height: 200px; overflow-y: auto; z-index: 40;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        }
+        .suggestion-item { padding: 14px; border-bottom: 1px solid #334155; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+        
+        /* Select Personalizado */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-sm sm:text-base selection:bg-brand-start selection:text-white">
+
+    <div id="view-onboarding" class="hidden absolute inset-0 z-[100] bg-dark-900 flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+        <div class="relative mb-8">
+            <div class="absolute inset-0 bg-brand-start blur-2xl opacity-20 rounded-full"></div>
+            <i class="fa-solid fa-wallet text-6xl text-brand-start relative z-10 animate-bounce-subtle"></i>
+        </div>
+        <h1 class="text-3xl font-bold mb-2 text-white">Organiza.aí</h1>
+        <p class="text-gray-400 mb-8">Controle total, sem bagunça.</p>
+        <div class="w-full max-w-xs space-y-4">
+            <input type="text" id="user-name-input" placeholder="Seu Nome" class="w-full bg-dark-800 border border-dark-700 p-4 rounded-xl text-white outline-none text-center text-lg focus:border-brand-start transition-colors">
+            <button onclick="app.finishOnboarding()" class="w-full bg-brand-start hover:bg-indigo-500 text-white font-bold p-4 rounded-xl shadow-lg btn-press">Começar</button>
+        </div>
+    </div>
+
+    <header id="app-header" class="bg-dark-800/80 backdrop-blur-md p-4 border-b border-dark-700 flex justify-between items-center z-20 hidden">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <p class="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Saldo Disponível</p>
+                <button onclick="app.toggleBalance()" class="text-gray-500 text-xs p-1 hover:text-white"><i id="eye-icon" class="fa-solid fa-eye"></i></button>
+            </div>
+            <div id="display-balance" class="text-2xl font-bold text-white tracking-tight">R$ 0,00</div>
+        </div>
+        <div class="flex gap-3 items-center">
+            <button id="organize-alert" onclick="app.openOrganizer()" class="hidden animate-bounce-subtle bg-warning text-dark-900 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg shadow-orange-500/20">
+                <i class="fa-solid fa-broom"></i> <span id="organize-count">0</span>
+            </button>
+            <button onclick="app.toggleHub(true)" class="text-gray-300 p-2 hover:bg-dark-700 rounded-lg"><i class="fa-solid fa-bars text-xl"></i></button>
+        </div>
+    </header>
+
+    <main id="main-content" class="flex-1 overflow-y-auto no-scrollbar p-4 pb-52 space-y-4 hidden relative scroll-smooth">
+        </main>
+
+    <footer id="chat-input-area" class="bg-dark-800 border-t border-dark-700 pt-2 pb-safe px-3 z-30 hidden relative shadow-[0_-5px_20px_rgba(0,0,0,0.2)]">
+        
+        <div class="w-full overflow-x-auto no-scrollbar mb-2 px-1">
+            <div class="flex gap-2" id="quick-chips-container">
+                </div>
+        </div>
+
+        <div id="suggestions-box" class="hidden"></div>
+        
+        <div class="max-w-3xl mx-auto flex flex-col gap-2 relative pb-2">
+            <div class="relative group">
+                <input type="text" id="desc-input" placeholder="O que rolou?" autocomplete="off"
+                    class="w-full bg-dark-900 text-white p-3 pl-10 rounded-xl border border-dark-700 outline-none focus:border-brand-start transition-all placeholder-gray-600">
+                <i class="fa-solid fa-pen absolute left-3 top-3.5 text-gray-500"></i>
+            </div>
+            
+            <div class="flex gap-2">
+                <div class="relative flex-1">
+                    <span class="absolute left-3 top-3 text-gray-500 font-bold">R$</span>
+                    <input type="tel" id="value-input" placeholder="0,00" oninput="utils.maskCurrency(this)"
+                        class="w-full bg-dark-900 text-white p-3 pl-9 rounded-xl border border-dark-700 text-lg font-bold outline-none focus:border-brand-start transition-colors">
+                </div>
+                
+                <button onclick="app.submitTransactionClick('out')" class="bg-expense hover:bg-red-600 text-white px-4 rounded-xl font-bold btn-press shadow-lg shadow-red-900/30 flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-trend-down"></i> Gastei
+                </button>
+                <button onclick="app.submitTransactionClick('in')" class="bg-income hover:bg-emerald-600 text-white px-4 rounded-xl font-bold btn-press shadow-lg shadow-emerald-900/30 flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-trend-up"></i> Recebi
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <nav id="bottom-nav" class="bg-dark-800/95 backdrop-blur border-t border-dark-700 flex justify-between items-center p-2 pb-6 z-20 hidden">
+        <button onclick="app.navigate('chat')" class="nav-btn flex-1 flex flex-col items-center p-2 text-gray-500 btn-press" data-target="chat">
+            <i class="fa-solid fa-comments text-lg mb-1 transition-colors"></i><span class="text-[10px] font-medium">Chat</span>
+        </button>
+        <button onclick="app.navigate('planning')" class="nav-btn flex-1 flex flex-col items-center p-2 text-gray-500 btn-press" data-target="planning">
+            <i class="fa-solid fa-chart-pie text-lg mb-1 transition-colors"></i><span class="text-[10px] font-medium">Potes</span>
+        </button>
+        <button onclick="app.navigate('bills')" class="nav-btn flex-1 flex flex-col items-center p-2 text-gray-500 btn-press" data-target="bills">
+            <i class="fa-solid fa-file-invoice-dollar text-lg mb-1 transition-colors"></i><span class="text-[10px] font-medium">Contas</span>
+        </button>
+        <button onclick="app.navigate('goals')" class="nav-btn flex-1 flex flex-col items-center p-2 text-gray-500 btn-press" data-target="goals">
+            <i class="fa-solid fa-piggy-bank text-lg mb-1 transition-colors"></i><span class="text-[10px] font-medium">Reserva</span>
+        </button>
+        <button onclick="app.navigate('support')" class="nav-btn flex-1 flex flex-col items-center p-2 text-gold font-bold btn-press" data-target="support">
+            <i class="fa-solid fa-heart text-lg mb-1 animate-pulse"></i><span class="text-[10px] font-medium">Apoiar</span>
+        </button>
+    </nav>
+
+    <div id="hub-menu" class="fixed inset-0 z-[80] bg-dark-900/95 backdrop-blur-xl hidden flex flex-col p-6 animate-fade-in">
+        <div class="flex justify-end mb-8"><button onclick="app.toggleHub(false)" class="bg-dark-800 p-3 rounded-full hover:bg-dark-700 btn-press"><i class="fa-solid fa-xmark text-xl text-white"></i></button></div>
+        <div class="space-y-4 flex-1 flex flex-col justify-center">
+            <button onclick="app.exportData()" class="w-full bg-dark-800 p-5 rounded-2xl flex items-center gap-4 text-white font-bold border border-dark-700 hover:border-brand-start btn-press">
+                <div class="bg-blue-500/20 p-3 rounded-full text-blue-500"><i class="fa-solid fa-cloud-arrow-down text-xl"></i></div> Backup (Baixar Dados)
+            </button>
+            <label class="w-full bg-dark-800 p-5 rounded-2xl flex items-center gap-4 text-white font-bold border border-dark-700 hover:border-purple-500 btn-press cursor-pointer">
+                <input type="file" onchange="app.importData(this)" class="hidden">
+                <div class="bg-purple-500/20 p-3 rounded-full text-purple-500"><i class="fa-solid fa-rotate text-xl"></i></div> Restaurar Backup
+            </label>
+            <button onclick="app.hardReset()" class="w-full bg-red-900/10 p-5 rounded-2xl flex items-center gap-4 text-red-500 font-bold mt-8 border border-red-900/30 hover:bg-red-900/20 btn-press">
+                <i class="fa-solid fa-triangle-exclamation text-xl"></i> Resetar Tudo
+            </button>
+        </div>
+    </div>
+
+    <div id="trans-options-modal" class="fixed inset-0 z-[100] bg-black/80 hidden flex items-end justify-center p-4 backdrop-blur-sm animate-fade-in">
+        <div class="bg-dark-800 w-full max-w-sm rounded-2xl p-6 border border-dark-600 animate-slide-up shadow-2xl">
+            <h3 class="font-bold text-white mb-4">Gerenciar Registro</h3>
+            <p class="text-sm text-gray-400 mb-6" id="trans-opt-desc"></p>
+            <input type="hidden" id="trans-opt-id">
+            <button onclick="app.openTransEdit()" class="w-full bg-dark-700 p-4 rounded-xl text-white font-bold mb-3 flex items-center gap-3 btn-press"><i class="fa-solid fa-pen text-blue-400"></i> Editar</button>
+            <button onclick="app.deleteTransaction()" class="w-full bg-red-900/20 p-4 rounded-xl text-red-500 font-bold mb-3 flex items-center gap-3 btn-press"><i class="fa-solid fa-trash"></i> Excluir</button>
+            <button onclick="document.getElementById('trans-options-modal').classList.add('hidden')" class="w-full py-3 text-gray-500 font-bold">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="trans-edit-modal" class="fixed inset-0 z-[110] bg-black/90 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-dark-800 w-full max-w-sm rounded-2xl p-6 border border-dark-600">
+            <h3 class="font-bold text-white mb-4">Editar</h3>
+            <label class="text-xs text-gray-500">Descrição</label>
+            <input type="text" id="edit-trans-desc" class="w-full bg-dark-900 p-3 rounded-xl mb-3 text-white border border-dark-700">
+            <label class="text-xs text-gray-500">Valor</label>
+            <input type="tel" id="edit-trans-val" oninput="utils.maskCurrency(this)" class="w-full bg-dark-900 p-3 rounded-xl mb-4 text-white border border-dark-700">
+            <div class="flex gap-3">
+                <button onclick="app.saveTransEdit()" class="flex-1 bg-brand-start py-3 rounded-xl text-white font-bold btn-press">Salvar</button>
+                <button onclick="document.getElementById('trans-edit-modal').classList.add('hidden')" class="flex-1 bg-dark-700 py-3 rounded-xl text-gray-400 font-bold">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cat-edit-modal" class="fixed inset-0 z-[90] bg-black/90 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-dark-800 w-full max-w-sm rounded-2xl p-6 border border-dark-600 animate-slide-up">
+            <h3 class="font-bold text-white mb-4" id="cat-edit-title">Editar Pote</h3>
+            <input type="text" id="cat-edit-name" class="w-full bg-dark-900 p-3 rounded-xl mb-3 text-white border border-dark-700" placeholder="Nome">
+            <input type="tel" id="cat-edit-limit" oninput="utils.maskCurrency(this)" class="w-full bg-dark-900 p-3 rounded-xl mb-4 text-white border border-dark-700" placeholder="Meta">
+            <input type="hidden" id="cat-edit-id">
+            <div class="flex gap-3">
+                <button onclick="app.saveCategoryEdit()" class="flex-1 bg-brand-start py-3 rounded-xl text-white font-bold btn-press">Salvar</button>
+                <button onclick="document.getElementById('cat-edit-modal').classList.add('hidden')" class="flex-1 bg-dark-700 py-3 rounded-xl text-gray-400 font-bold">Cancelar</button>
+            </div>
+            <button onclick="app.deleteCategory()" id="btn-delete-cat" class="w-full mt-3 text-red-500 text-xs py-2">Excluir</button>
+        </div>
+    </div>
+
+    <div id="income-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-dark-800 w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-dark-600 animate-slide-up">
+            <h3 class="text-xl font-bold text-white mb-2">Origem da Receita</h3>
+            <div id="income-cat-list" class="grid grid-cols-2 gap-3 mb-4"></div>
+            <button onclick="document.getElementById('income-modal').classList.add('hidden')" class="w-full py-3 text-gray-400 font-bold border border-dark-700 rounded-lg">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="organizer-modal" class="fixed inset-0 z-[60] bg-dark-900 hidden flex flex-col animate-slide-up">
+        <div class="p-4 border-b border-dark-700 flex justify-between items-center bg-dark-800">
+            <h2 class="font-bold text-white">Organizar Pendências</h2>
+            <button onclick="document.getElementById('organizer-modal').classList.add('hidden')" class="text-gray-400"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-3" id="organizer-list">
+            </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'organiza_ai_v9_ultimate';
+        
+        // --- ESTADO GLOBAL ---
+        const initialState = {
+            user: { name: '', onboarded: false, balanceVisible: true },
+            transactions: [],
+            expenseCategories: [
+                // Categorias de Sistema (Não aparecem nos balões)
+                { id: 'cat_outros', name: 'Outros', icon: 'fa-circle-question', limit: 0, spent: 0, color: 'text-gray-400' },
+                { id: 'cat_imprevisto', name: 'Imprevistos', icon: 'fa-triangle-exclamation', limit: 0, spent: 0, color: 'text-red-500' },
+                { id: 'cat_contas', name: 'Contas Fixas', icon: 'fa-file-invoice', limit: 1500, spent: 0, color: 'text-blue-500' }, 
+                { id: 'cat_aportes', name: 'Aportes/Reserva', icon: 'fa-piggy-bank', limit: 0, spent: 0, color: 'text-emerald-500' }, 
+                // Categorias de Usuário
+                { id: 'cat_mercado', name: 'Mercado', icon: 'fa-cart-shopping', limit: 1200, spent: 0, color: 'text-blue-400' },
+                { id: 'cat_lazer', name: 'Lazer', icon: 'fa-beer-mug-empty', limit: 400, spent: 0, color: 'text-yellow-400' },
+                { id: 'cat_transporte', name: 'Transporte', icon: 'fa-car', limit: 300, spent: 0, color: 'text-gray-400' },
+                { id: 'cat_delivery', name: 'Delivery', icon: 'fa-burger', limit: 200, spent: 0, color: 'text-orange-400' }
+            ],
+            incomeCategories: [
+                { id: 'inc_salario', name: 'Salário', icon: 'fa-money-check-dollar', color: 'text-green-400' },
+                { id: 'inc_freela', name: 'Freela', icon: 'fa-laptop-code', color: 'text-blue-400' }
+            ],
+            bills: [],
+            reserva: 0,
+            view: 'chat'
+        };
+
+        let state = JSON.parse(JSON.stringify(initialState));
+        let tempTransaction = null;
+        let selectedChipId = null;
+
+        // --- FUNÇÕES UTILITÁRIAS ---
+        const utils = {
+            formatMoney: (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            parseMoney: (str) => parseFloat(str?.toString().replace(/[R$\s.]/g, '').replace(',', '.') || 0),
+            maskCurrency: (input) => {
+                let v = input.value.replace(/\D/g, "");
+                input.value = (v / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            },
+            generateId: () => Date.now().toString(36) + Math.random().toString(36).substr(2),
+            formatDate: (iso) => {
+                const d = new Date(iso);
+                return `${d.getDate()}/${d.getMonth()+1} • ${d.getHours().toString().padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            },
+            save: () => localStorage.setItem(STORAGE_KEY, JSON.stringify(state)),
+            load: () => {
+                const data = localStorage.getItem(STORAGE_KEY);
+                if(data) {
+                    try {
+                        const parsed = JSON.parse(data);
+                        state = { ...initialState, ...parsed };
+                        // Integridade: Garante categorias de sistema
+                        ['cat_outros', 'cat_contas', 'cat_aportes'].forEach(sysId => {
+                            if(!state.expenseCategories.find(c => c.id === sysId)) {
+                                state.expenseCategories.push(initialState.expenseCategories.find(c => c.id === sysId));
+                            }
+                        });
+                    } catch(e) {}
+                }
+            },
+            getBalance: () => state.transactions.reduce((acc, t) => t.type === 'in' ? acc + t.value : acc - t.value, 0)
+        };
+
+        // --- CONTROLADOR DA APLICAÇÃO ---
+        const app = {
+            init: () => {
+                utils.load();
+                if(!state.user.onboarded) document.getElementById('view-onboarding').classList.remove('hidden');
+                else app.start();
+                document.getElementById('desc-input').addEventListener('input', app.handleInputSearch);
+            },
+
+            finishOnboarding: () => {
+                const name = document.getElementById('user-name-input').value.trim();
+                if(!name) return;
+                state.user.name = name;
+                state.user.onboarded = true;
+                utils.save();
+                document.getElementById('view-onboarding').classList.add('hidden');
+                app.start();
+            },
+
+            start: () => {
+                ['app-header', 'main-content', 'chat-input-area', 'bottom-nav'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+                app.updateUI();
+                app.navigate('chat');
+            },
+
+            // --- NAVEGAÇÃO ---
+            navigate: (view) => {
+                state.view = view;
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    const active = btn.dataset.target === view;
+                    const icon = btn.querySelector('i');
+                    const txt = btn.querySelector('span');
+                    if(btn.dataset.target === 'support') return;
+                    if(active) {
+                        icon.className = icon.className.replace('text-gray-500', 'text-brand-start');
+                        txt.className = 'text-[10px] font-medium text-brand-start';
+                    } else {
+                        icon.className = icon.className.replace('text-brand-start', 'text-gray-500');
+                        txt.className = 'text-[10px] font-medium text-gray-500';
+                    }
+                });
+                const inputArea = document.getElementById('chat-input-area');
+                if(view === 'chat' || view === 'planning') {
+                    inputArea.classList.remove('hidden');
+                    app.renderQuickChips(); // Atualiza chips
+                } else inputArea.classList.add('hidden');
+                app.renderCurrentView();
+            },
+
+            toggleBalance: () => { state.user.balanceVisible = !state.user.balanceVisible; utils.save(); app.updateUI(); },
+            toggleHub: (s) => document.getElementById('hub-menu').classList.toggle('hidden', !s),
+
+            updateUI: () => {
+                const balEl = document.getElementById('display-balance');
+                balEl.innerText = state.user.balanceVisible ? utils.formatMoney(utils.getBalance()) : '••••••';
+                document.getElementById('eye-icon').className = state.user.balanceVisible ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+                
+                // Filtro para alerta (Ignora sistema)
+                const pending = state.transactions.filter(t => t.categoryId === 'cat_outros').length;
+                const alert = document.getElementById('organize-alert');
+                if(pending > 0) { alert.classList.remove('hidden'); document.getElementById('organize-count').innerText = pending; } 
+                else alert.classList.add('hidden');
+            },
+
+            // --- BALÕES DE ATALHO (QUICK CHIPS) ---
+            renderQuickChips: () => {
+                const container = document.getElementById('quick-chips-container');
+                container.innerHTML = '';
+                
+                // FILTRO: Não mostrar Outros, Aportes nem Contas Fixas nos balões
+                const excluded = ['cat_outros', 'cat_aportes', 'cat_contas'];
+                
+                state.expenseCategories.filter(c => !excluded.includes(c.id)).forEach(cat => {
+                    const btn = document.createElement('button');
+                    const isSelected = selectedChipId === cat.id;
+                    btn.className = `whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 border ${isSelected ? 'bg-brand-start text-white border-brand-start' : 'bg-dark-900 text-gray-400 border-dark-700 hover:border-gray-500'}`;
+                    btn.innerHTML = `<i class="fa-solid ${cat.icon}"></i> ${cat.name}`;
+                    btn.onclick = () => {
+                        if(selectedChipId === cat.id) {
+                            selectedChipId = null;
+                            document.getElementById('desc-input').value = '';
+                        } else {
+                            selectedChipId = cat.id;
+                            document.getElementById('desc-input').value = cat.name;
+                        }
+                        app.renderQuickChips();
+                    };
+                    container.appendChild(btn);
+                });
+            },
+
+            // --- AUTOCOMPLETE ---
+            handleInputSearch: (e) => {
+                const term = e.target.value.toLowerCase();
+                const box = document.getElementById('suggestions-box');
+                selectedChipId = null;
+                if(term.length < 2) { box.classList.add('hidden'); return; }
+                const cats = [...state.expenseCategories, ...state.incomeCategories];
+                const matches = cats.filter(c => c.name.toLowerCase().includes(term));
+                if(matches.length > 0) {
+                    box.innerHTML = '';
+                    box.classList.remove('hidden');
+                    matches.forEach(c => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion-item text-gray-300';
+                        div.innerHTML = `<span><i class="fa-solid ${c.icon} mr-2"></i>${c.name}</span>`;
+                        div.onclick = () => {
+                            document.getElementById('desc-input').value = c.name;
+                            selectedChipId = c.id;
+                            box.classList.add('hidden');
+                            app.renderQuickChips();
+                        };
+                        box.appendChild(div);
+                    });
+                } else box.classList.add('hidden');
+            },
+
+            submitTransactionClick: (type) => {
+                const descInput = document.getElementById('desc-input');
+                const valInput = document.getElementById('value-input');
+                const value = utils.parseMoney(valInput.value);
+                const desc = descInput.value.trim();
+                if(value <= 0) return alert("Digite um valor.");
+                
+                if(type === 'in') {
+                    tempTransaction = { value, desc: desc || 'Recebimento' };
+                    app.openIncomeModal();
+                } else {
+                    if(utils.getBalance() < value && !confirm("Saldo insuficiente. Continuar?")) return;
+                    app.processTransaction({ desc: desc || 'Gasto', value, type: 'out', categoryId: selectedChipId || 'cat_outros' });
+                }
+            },
+
+            processTransaction: (data) => {
+                if(data.type === 'out') {
+                    const cat = state.expenseCategories.find(c => c.id === data.categoryId);
+                    if(cat) {
+                        cat.spent += data.value;
+                        if(cat.id === 'cat_imprevisto' && state.reserva >= data.value) {
+                            state.reserva -= data.value;
+                            alert("💸 Coberto pela Reserva.");
+                        }
+                    }
+                }
+                state.transactions.push({
+                    id: data.id || utils.generateId(),
+                    desc: data.desc,
+                    value: data.value,
+                    type: data.type,
+                    categoryId: data.categoryId,
+                    date: new Date().toISOString()
+                });
+                
+                document.getElementById('desc-input').value = '';
+                document.getElementById('value-input').value = '';
+                document.getElementById('suggestions-box').classList.add('hidden');
+                selectedChipId = null;
+                app.renderQuickChips();
+                utils.save();
+                app.updateUI();
+                app.renderCurrentView();
+            },
+
+            // --- ORGANIZADOR COM SELECT ---
+            openOrganizer: () => {
+                const list = document.getElementById('organizer-list');
+                list.innerHTML = '';
+                
+                // Filtra itens em Outros
+                const items = state.transactions.filter(t => t.categoryId === 'cat_outros');
+                
+                if(items.length === 0) {
+                    list.innerHTML = '<p class="text-gray-500 text-center py-4">Tudo organizado! 🎉</p>';
+                }
+
+                items.forEach(t => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-dark-700 p-4 rounded-xl mb-3';
+                    
+                    // Monta as opções do Select (Exclui Outros e Sistema desnecessário)
+                    let options = `<option value="" disabled selected>Selecionar Pote...</option>`;
+                    state.expenseCategories.forEach(c => {
+                        if(c.id !== 'cat_outros') {
+                            options += `<option value="${c.id}">${c.name}</option>`;
+                        }
+                    });
+
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="font-bold text-white text-sm">${t.desc}</span>
+                            <span class="text-xs text-expense font-bold">${utils.formatMoney(t.value)}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <select id="sel-${t.id}" class="flex-1 bg-dark-800 text-white text-xs p-2 rounded-lg border border-dark-600 outline-none focus:border-brand-start">
+                                ${options}
+                            </select>
+                            <button onclick="app.classifyTransaction('${t.id}')" class="bg-brand-start px-4 rounded-lg text-white font-bold text-xs"><i class="fa-solid fa-check"></i></button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+                document.getElementById('organizer-modal').classList.remove('hidden');
+            },
+
+            classifyTransaction: (transId) => {
+                const select = document.getElementById(`sel-${transId}`);
+                const catId = select.value;
+                if(!catId) return alert("Selecione uma categoria.");
+
+                const t = state.transactions.find(x => x.id === transId);
+                const newCat = state.expenseCategories.find(x => x.id === catId);
+                const oldCat = state.expenseCategories.find(x => x.id === 'cat_outros');
+
+                if(t && newCat && oldCat) {
+                    oldCat.spent -= t.value;
+                    newCat.spent += t.value;
+                    t.categoryId = newCat.id;
+                    utils.save();
+                    app.openOrganizer(); // Recarrega lista
+                    app.updateUI();
+                    if(state.view === 'chat') app.renderChat(document.getElementById('main-content'));
+                }
+            },
+
+            // --- GESTÃO DE TRANSAÇÕES ---
+            openTransOptions: (id) => {
+                const t = state.transactions.find(x => x.id === id);
+                document.getElementById('trans-opt-id').value = id;
+                document.getElementById('trans-opt-desc').innerText = `${t.desc} - ${utils.formatMoney(t.value)}`;
+                document.getElementById('trans-options-modal').classList.remove('hidden');
+            },
+            deleteTransaction: () => {
+                const id = document.getElementById('trans-opt-id').value;
+                const t = state.transactions.find(x => x.id === id);
+                if(confirm("Excluir?")) {
+                    if(t.type === 'out') { const c = state.expenseCategories.find(x=>x.id===t.categoryId); if(c) c.spent -= t.value; }
+                    state.transactions = state.transactions.filter(x => x.id !== id);
+                    utils.save();
+                    document.getElementById('trans-options-modal').classList.add('hidden');
+                    app.updateUI();
+                    app.renderCurrentView();
+                }
+            },
+            openTransEdit: () => {
+                const id = document.getElementById('trans-opt-id').value;
+                const t = state.transactions.find(x => x.id === id);
+                document.getElementById('trans-options-modal').classList.add('hidden');
+                document.getElementById('edit-trans-desc').value = t.desc;
+                document.getElementById('edit-trans-val').value = (t.value*100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+                document.getElementById('trans-edit-modal').classList.remove('hidden');
+            },
+            saveTransEdit: () => {
+                const id = document.getElementById('trans-opt-id').value;
+                const desc = document.getElementById('edit-trans-desc').value;
+                const val = utils.parseMoney(document.getElementById('edit-trans-val').value);
+                const t = state.transactions.find(x => x.id === id);
+                if(t.type === 'out') {
+                    const c = state.expenseCategories.find(x=>x.id===t.categoryId);
+                    if(c) { c.spent -= t.value; c.spent += val; }
+                }
+                t.desc = desc; t.value = val;
+                utils.save();
+                document.getElementById('trans-edit-modal').classList.add('hidden');
+                app.updateUI();
+                app.renderCurrentView();
+            },
+
+            // --- RENDERS ---
+            renderCurrentView: () => {
+                const c = document.getElementById('main-content');
+                c.innerHTML = '';
+                if(state.view === 'chat') app.renderChat(c);
+                else if(state.view === 'planning') app.renderPlanning(c);
+                else if(state.view === 'bills') app.renderBills(c);
+                else if(state.view === 'goals') app.renderGoals(c);
+                else if(state.view === 'support') app.renderSupport(c);
+            },
+
+            renderChat: (c) => {
+                const list = [...state.transactions].reverse().slice(0, 50);
+                list.reverse().forEach(t => {
+                    const isEntry = t.type === 'in';
+                    const cat = state.expenseCategories.find(x=>x.id===t.categoryId)||state.incomeCategories.find(x=>x.id===t.categoryId);
+                    const isPending = t.categoryId === 'cat_outros';
+                    let bubble = isEntry ? 'bg-indigo-900/30 border-indigo-500/30 rounded-tr-none' : 'bg-dark-800 border-dark-600 rounded-tl-none';
+                    if(isPending) bubble = 'bg-dark-800 border-warning/50 rounded-tl-none';
+                    
+                    c.innerHTML += `
+                    <div class="flex w-full ${isEntry?'justify-end':'justify-start'} mb-3 bubble-in cursor-pointer" onclick="app.openTransOptions('${t.id}')">
+                        <div class="max-w-[85%] p-4 rounded-2xl border shadow-sm ${bubble} transition-transform active:scale-95">
+                            <div class="flex justify-between gap-4 mb-1"><span class="text-sm font-bold text-white">${t.desc}</span><span class="text-[10px] text-gray-500">${utils.formatDate(t.date)}</span></div>
+                            <div class="flex items-center gap-2 mb-2"><span class="text-[10px] bg-dark-900 px-2 py-0.5 rounded text-gray-400 border border-dark-700"><i class="fa-solid ${cat?.icon||'fa-tag'} mr-1"></i> ${cat?.name||'Geral'}</span>${isPending?'<span class="text-[10px] text-warning animate-pulse"><i class="fa-solid fa-circle-exclamation"></i> Classificar</span>':''}</div>
+                            <div class="font-bold text-lg ${isEntry?'text-income':'text-white'}">${isEntry?'+':'-'} ${utils.formatMoney(t.value)}</div>
+                        </div>
+                    </div>`;
+                });
+                setTimeout(()=>c.scrollTop = c.scrollHeight, 100);
+            },
+
+            renderPlanning: (c) => {
+                c.innerHTML = `<div class="flex justify-between items-center mb-6 animate-slide-up"><h2 class="font-bold text-white text-lg">Meus Potes</h2><button onclick="app.openCatEdit()" class="text-xs bg-brand-start px-3 py-2 rounded-lg text-white font-bold shadow">+ Novo Pote</button></div>`;
+                // Exclui categorias de sistema da visualização simples
+                const systemCats = ['cat_outros', 'cat_aportes', 'cat_contas'];
+                state.expenseCategories.forEach(cat => {
+                    if(systemCats.includes(cat.id)) return; 
+                    const pct = cat.limit > 0 ? (cat.spent / cat.limit) * 100 : 0;
+                    const alert = pct > 100;
+                    c.innerHTML += `
+                    <div class="bg-dark-800 p-4 rounded-2xl border border-dark-700 mb-3 relative animate-slide-up">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-dark-900 flex items-center justify-center ${cat.color} text-lg"><i class="fa-solid ${cat.icon}"></i></div><div><p class="font-bold text-sm text-gray-200">${cat.name}</p><p class="text-[10px] text-gray-500">Meta: ${utils.formatMoney(cat.limit)}</p></div></div>
+                            <button onclick="app.openCatEdit('${cat.id}')" class="text-gray-500 hover:text-white p-2"><i class="fa-solid fa-pen"></i></button>
+                        </div>
+                        <div class="w-full h-2 bg-dark-900 rounded-full mb-1"><div class="h-full ${alert?'bg-expense':'bg-brand-start'}" style="width: ${Math.min(pct, 100)}%"></div></div>
+                        <div class="flex justify-between text-xs"><span class="text-gray-400">Gasto: ${utils.formatMoney(cat.spent)}</span><span class="${alert?'text-expense font-bold':'text-success'}">${alert?'Ultrapassou':'Dentro'}</span></div>
+                    </div>`;
+                });
+            },
+
+            renderBills: (c) => {
+                c.innerHTML = `<div class="flex justify-between items-center mb-6 animate-slide-up"><h2 class="font-bold text-white text-lg">Contas Fixas</h2><button onclick="app.addBill()" class="text-brand-start bg-dark-800 p-2 rounded-lg"><i class="fa-solid fa-plus"></i></button></div>`;
+                if(state.bills.length===0) c.innerHTML+=`<p class="text-center text-gray-500 text-sm">Sem contas.</p>`;
+                state.bills.forEach(b => {
+                    c.innerHTML += `
+                    <div class="bg-dark-800 p-4 rounded-2xl border border-dark-700 mb-2 flex justify-between items-center animate-slide-up ${b.paid?'opacity-50':''}">
+                        <div><p class="font-bold text-white text-sm ${b.paid?'line-through':''}">${b.name}</p><p class="text-[10px] text-gray-400">${b.paid?'PAGO':`Vence dia ${b.day}`}</p></div>
+                        <div class="flex items-center gap-4">${b.paid?`<span class="text-xs font-bold text-income">${utils.formatMoney(b.amount)}</span>`:''}<button onclick="app.toggleBill('${b.id}')" class="text-2xl ${b.paid?'text-income':'text-dark-600'} btn-press"><i class="fa-regular ${b.paid?'fa-square-check':'fa-square'}"></i></button></div>
+                    </div>`;
+                });
+            },
+
+            renderGoals: (c) => {
+                c.innerHTML = `
+                <div class="bg-gradient-to-br from-emerald-900 to-emerald-950 p-8 rounded-3xl border border-emerald-800 text-center relative overflow-hidden shadow-2xl mb-6 animate-slide-up">
+                    <i class="fa-solid fa-piggy-bank absolute -right-6 -bottom-6 text-9xl text-emerald-800/20 rotate-12"></i>
+                    <h2 class="text-emerald-400 font-bold mb-1 uppercase tracking-widest text-xs">Cofre (Reserva)</h2>
+                    <div class="text-4xl font-bold text-white mb-6 relative z-10">${utils.formatMoney(state.reserva)}</div>
+                    <div class="flex gap-3 relative z-10">
+                        <button onclick="app.transferReserva(true)" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold btn-press">Guardar</button>
+                        <button onclick="app.transferReserva(false)" class="flex-1 bg-dark-900/50 text-emerald-300 border border-emerald-700 py-3 rounded-xl font-bold btn-press">Resgatar</button>
+                    </div>
+                </div>`;
+            },
+
+            renderSupport: (c) => {
+                c.innerHTML = `
+                <div class="flex flex-col items-center justify-center pt-10 text-center animate-fade-in">
+                    <div class="w-24 h-24 bg-dark-800 rounded-full flex items-center justify-center border border-gold shadow-[0_0_30px_rgba(251,191,36,0.2)] mb-6 animate-bounce-subtle"><i class="fa-solid fa-hand-holding-heart text-4xl text-gold"></i></div>
+                    <h2 class="text-2xl font-bold text-white mb-2">Apoie o Projeto</h2>
+                    <p class="text-gray-400 max-w-xs text-sm mb-8">Ferramenta independente feita com carinho.</p>
+                    <div class="w-full max-w-sm bg-dark-800 p-6 rounded-2xl border border-dark-700 shadow-xl">
+                        <p class="text-xs text-gray-500 uppercase font-bold mb-3">Chave PIX</p>
+                        <div class="bg-dark-900 p-3 rounded-xl border border-dark-700 flex items-center gap-3 mb-4"><i class="fa-brands fa-pix text-gold text-lg"></i><input type="text" value="lisandrowork1@gmail.com" readonly class="bg-transparent text-white w-full outline-none text-sm font-mono" id="pix-key"></div>
+                        <button onclick="app.copyPix()" class="w-full bg-gold hover:bg-yellow-500 text-dark-900 font-bold py-3 rounded-xl shadow-lg btn-press">Copiar Chave</button>
+                    </div>
+                </div>`;
+            },
+
+            // --- AÇÕES ---
+            openCatEdit: (id=null) => {
+                const modal = document.getElementById('cat-edit-modal');
+                if(id) {
+                    const cat = state.expenseCategories.find(c => c.id === id);
+                    document.getElementById('cat-edit-title').innerText = 'Editar Pote';
+                    document.getElementById('cat-edit-name').value = cat.name;
+                    document.getElementById('cat-edit-limit').value = (cat.limit*100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+                    document.getElementById('cat-edit-id').value = id;
+                    document.getElementById('btn-delete-cat').classList.remove('hidden');
+                } else {
+                    document.getElementById('cat-edit-title').innerText = 'Novo Pote';
+                    document.getElementById('cat-edit-name').value = '';
+                    document.getElementById('cat-edit-limit').value = '';
+                    document.getElementById('cat-edit-id').value = '';
+                    document.getElementById('btn-delete-cat').classList.add('hidden');
+                }
+                modal.classList.remove('hidden');
+            },
+            saveCategoryEdit: () => {
+                const id = document.getElementById('cat-edit-id').value;
+                const name = document.getElementById('cat-edit-name').value;
+                const limit = utils.parseMoney(document.getElementById('cat-edit-limit').value);
+                if(!name) return;
+                if(id) { const cat = state.expenseCategories.find(c => c.id === id); cat.name = name; cat.limit = limit; }
+                else { state.expenseCategories.push({ id: utils.generateId(), name, limit, spent: 0, icon: 'fa-box-open', color: 'text-white' }); }
+                utils.save(); document.getElementById('cat-edit-modal').classList.add('hidden'); app.renderCurrentView();
+            },
+            deleteCategory: () => {
+                const id = document.getElementById('cat-edit-id').value;
+                if(confirm("Excluir?")) { state.expenseCategories = state.expenseCategories.filter(c => c.id !== id); utils.save(); document.getElementById('cat-edit-modal').classList.add('hidden'); app.renderCurrentView(); }
+            },
+            openIncomeModal: () => {
+                const list = document.getElementById('income-cat-list'); list.innerHTML = '';
+                [...state.incomeCategories, {id:'new', name:'Nova', icon:'fa-plus'}].forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.className = c.id === 'new' ? 'bg-dark-800 border border-dashed border-gray-600 p-4 rounded-xl text-gray-400' : 'bg-dark-700 p-4 rounded-xl border border-dark-600';
+                    btn.innerHTML = `<i class="fa-solid ${c.icon} text-2xl mb-1 ${c.color||''}"></i><br><span class="text-xs font-bold text-white">${c.name}</span>`;
+                    btn.onclick = () => {
+                        if(c.id === 'new') { const n = prompt("Nome:"); if(n) { state.incomeCategories.push({id: utils.generateId(), name: n, icon:'fa-money-bill', color:'text-green-400'}); app.openIncomeModal(); }}
+                        else { app.processTransaction({...tempTransaction, type:'in', categoryId:c.id}); document.getElementById('income-modal').classList.add('hidden'); }
+                    };
+                    list.appendChild(btn);
+                });
+                document.getElementById('income-modal').classList.remove('hidden');
+            },
+            addBill: () => {
+                const n = prompt("Nome da Conta:"); if(!n) return;
+                state.bills.push({id: utils.generateId(), name: n, day: prompt("Dia Vencimento:"), paid: false, amount: 0});
+                utils.save(); app.renderCurrentView();
+            },
+            // FIX: Contas vão para 'cat_contas'
+            toggleBill: (id) => {
+                const b = state.bills.find(x => x.id === id);
+                if(!b.paid) {
+                    const v = parseFloat(prompt(`Valor pago?`)?.replace(',', '.') || 0);
+                    if(v>0) { b.paid = true; b.amount = v; app.processTransaction({desc:`Conta: ${b.name}`, value:v, type:'out', categoryId:'cat_contas'}); }
+                } else if(confirm("Desmarcar?")) {
+                    b.paid = false; app.processTransaction({desc:`Estorno: ${b.name}`, value:b.amount, type:'in', categoryId:'inc_salario'}); b.amount = 0;
+                }
+                utils.save(); app.renderCurrentView();
+            },
+            // FIX: Reserva vai para 'cat_aportes'
+            transferReserva: (save) => {
+                const v = parseFloat(prompt(save?"Valor para guardar:":"Valor para resgatar:")?.replace(',', '.') || 0);
+                if(v<=0) return;
+                if(save) {
+                    if(utils.getBalance() < v) return alert("Saldo insuficiente.");
+                    state.reserva += v; app.processTransaction({desc:'Aporte Reserva', value:v, type:'out', categoryId:'cat_aportes'});
+                } else {
+                    if(state.reserva < v) return alert("Saldo insuficiente na reserva.");
+                    state.reserva -= v; app.processTransaction({desc:'Resgate Reserva', value:v, type:'in', categoryId:'inc_salario'});
+                }
+            },
+            exportData: () => { const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state)); a.download = "backup.json"; a.click(); },
+            importData: (i) => { const r = new FileReader(); r.onload = e => { state = JSON.parse(e.target.result); utils.save(); location.reload(); }; r.readAsText(i.files[0]); },
+            hardReset: () => confirm("Certeza absoluta?") && (localStorage.clear() || location.reload()),
+            copyPix: () => { const c = document.getElementById("pix-key"); c.select(); navigator.clipboard.writeText(c.value); alert("Chave copiada! ❤️"); }
+        };
+
+        app.init();
+    </script>
+</body>
+</html>
